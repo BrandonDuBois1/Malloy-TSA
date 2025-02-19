@@ -1,0 +1,433 @@
+>>>malloy
+// Enter Malloy here
+source: complaints is duckdb.table("./complaints-by-subcategory.csv") extend{
+    measure: numcomplaints is count()
+    measure: numairports is count(airport)
+    measure: numcats is count(clean_cat)
+    measure: numsubcat is count(clean_subcat)
+    measure: numyear is count(year1)
+    measure: nummonths is count(date1)
+    dimension: year_month_date is replace(year_month, '-', '/')
+    dimension: date1 is strptime!timestamp(year_month_date, '%Y/%-m')
+    dimension: month1 is month(date1)
+    dimension: year1 is year(date1)
+    dimension: quarter1 is quarter(date1)
+    
+}
+source: airports is duckdb.table("./usa-airports.csv") extend {
+join_one: complaints on iata = complaints.airport
+measure: numairports2 is count(name)
+}
+>>>markdown
+How many airports are we looking at?
+>>>malloy
+run: complaints -> {
+    aggregate: numairports
+}
+>>>markdown
+How many airports do we have in the naming file?
+>>>malloy
+run: airports -> {
+    aggregate: numairports2
+}
+>>>markdown
+How many categories of complaints do we have?
+>>>malloy
+run: complaints -> {
+    aggregate: numcats
+}
+>>>markdown
+How may subcategories do we have?
+>>>malloy
+run: complaints -> {
+    aggregate: numsubcat
+}
+>>>markdown
+How many years and months of data are we looking at?
+>>>malloy
+run: complaints -> {
+    aggregate: numyear
+    aggregate: nummonths
+}
+>>>markdown
+Number of complaints by airport?
+>>>malloy
+run: complaints -> {
+    group_by: airport
+    aggregate: numcomplaints
+    where: airport is not null
+}
+>>>markdown
+Number of complaints by category?
+>>>malloy
+run: complaints -> {
+    group_by: clean_cat
+    aggregate: numcomplaints
+    where: airport is not null
+}
+>>>markdown
+What are the different subcategories in each category?
+>>>malloy
+run: complaints -> {
+    group_by: category
+    aggregate: numcomplaints
+    where: airport is not null
+    nest: by_sub is {
+        group_by: subcategory
+        aggregate: numcomplaints
+
+    }
+}
+>>>markdown
+And what is the breakdown of complaints by year?
+>>>malloy
+# line_chart
+run: complaints -> {
+    group_by: date1.year
+    aggregate: numcomplaints
+}
+>>>markdown
+Number of compaints by month?
+>>>malloy
+# line_chart
+run: complaints -> {
+    group_by: month1
+    aggregate: numcomplaints
+    order_by: month1 
+}
+>>>markdown
+Breakdown of complaints by month?
+>>>malloy
+run: complaints -> {
+    group_by: month1
+    aggregate: numcomplaints
+    order_by: month1 
+    nest: bycat is {
+        group_by: clean_cat
+        aggregate: numcomplaints
+        limit: 1
+    }
+}
+>>>markdown
+Year over year change in complaints?
+>>>malloy
+run: complaints -> {
+    group_by: year1
+    aggregate: numcomplaints
+    order_by: year1}
+>>>markdown
+Now showing this as a graph?
+>>>malloy
+# line_chart
+run: complaints -> {
+    group_by: year1
+    aggregate: numcomplaints
+    order_by: year1}
+>>>markdown
+Top complaint by year?
+>>>malloy
+run: complaints -> {
+    group_by: year1
+    aggregate: numcomplaints
+    order_by: year1
+    nest: bycat is {
+        group_by: clean_cat
+        aggregate: numcomplaints
+        limit: 1
+        nest: bysubcat is {
+            group_by: clean_subcat
+            aggregate: numcomplaints
+            limit: 1
+        }
+        }
+    }
+>>>markdown
+Bar chart of complaint categories top 15
+>>>malloy
+# bar_chart
+run: complaints -> {
+    group_by: clean_cat
+    aggregate: numcomplaints
+    order_by: numcomplaints desc
+    limit: 15}
+>>>markdown
+Complaint categories bottom 10
+>>>malloy
+
+run: complaints -> {
+    group_by: clean_cat
+    aggregate: numcomplaints
+    order_by: numcomplaints asc
+    limit: 15}
+>>>markdown
+Complaint subcategories top 10
+>>>malloy
+run: complaints -> {
+    group_by: clean_subcat
+    aggregate: numcomplaints
+    order_by: numcomplaints desc
+    limit: 10}
+>>>markdown
+Top 3 complaint categories by airport?
+>>>malloy
+run: complaints -> {
+    group_by: airport
+    aggregate: numcomplaints
+    where: airport is not null
+    nest: by_cat is{
+        group_by: clean_cat
+        aggregate: numcomplaints
+        limit: 3
+    }}
+>>>markdown
+Airports with the least complaints?
+>>>malloy
+run: complaints -> {
+    group_by: airport
+    aggregate: numcomplaints
+    order_by: numcomplaints asc
+    where: airport is not null
+    limit: 10
+}
+>>>markdown
+Complaints by month over all the years
+>>>malloy
+# line_chart
+run: complaints -> {
+    group_by: date1
+    aggregate: numcomplaints
+    limit: 100000
+}
+    
+>>>markdown
+Worst Airports for people with disabilities?
+>>>malloy
+run: airports -> {
+    group_by: name
+    aggregate: complaints.numcomplaints
+    where: complaints.clean_cat = "Persons w/ Disabilities (PWD)" and complaints.airport is not null
+    limit: 10
+}
+>>>markdown
+Which states have the most complaints?
+>>>malloy
+# bar_chart
+run: airports -> {
+    group_by: state
+    aggregate: complaints.numcomplaints
+    limit: 10
+}
+>>>markdown
+For those 10 states, what is their top complaint and subcomplaint?
+>>>malloy
+run: airports -> {
+    group_by: state
+    aggregate: complaints.numcomplaints
+    limit: 10
+    nest: by_complaint is {
+        group_by: complaints.clean_cat
+        aggregate: complaints.numcomplaints
+        limit: 1
+        nest: bysub is {
+            group_by: complaints.clean_subcat
+            aggregate: complaints.numcomplaints
+            limit: 1
+        }
+    }
+}
+>>>markdown
+Top complaint state by year
+>>>malloy
+run: airports -> {
+    group_by: complaints.year1
+    aggregate: complaints.numcomplaints
+    order_by: year1
+    where: complaints.year1 is not null
+    nest: bystate is {
+        group_by: state
+        aggregate: complaints.numcomplaints
+        limit: 1
+    }
+
+}
+>>>markdown
+20. Top complaint state by month
+>>>malloy
+run: airports -> {
+    group_by: complaints.month1
+    aggregate: complaints.numcomplaints
+    order_by: month1
+    where: complaints.month1 is not null
+    nest: bystate is {
+        group_by: state
+        aggregate: complaints.numcomplaints
+        limit: 1
+    }
+
+}
+>>>markdown
+Airports where flying armed was an issue
+>>>malloy
+run: airports -> {
+    group_by: name
+    aggregate: complaints.numcomplaints
+    where: complaints.clean_cat = "Flying Armed"
+    }
+>>>markdown
+States with the most civil rights violation allegations
+>>>malloy
+run: airports -> {
+    group_by: state
+    aggregate: complaints.numcomplaints
+    where: complaints.clean_cat = "Civil Rights"
+    limit: 10
+    }
+>>>markdown
+States with the least civil rights violation allegations
+>>>malloy
+run: airports -> {
+    group_by: state
+    aggregate: complaints.numcomplaints
+    where: complaints.clean_cat = "Civil Rights"
+    limit: 10
+    order_by: numcomplaints asc
+    }
+>>>markdown
+States with the least complaints
+>>>malloy
+run: airports -> {
+    group_by: state
+    aggregate: complaints.numcomplaints
+    limit: 10
+    order_by: numcomplaints asc
+    }
+>>>markdown
+Yearly trend of complaints in WA
+>>>malloy
+# line_chart
+run: airports -> {
+    group_by: complaints.year1
+    aggregate: complaints.numcomplaints
+    where: state = "WA" and complaints.year1 is not null
+    order_by: year1 asc
+    }
+>>>markdown
+Map of complaints
+>>>malloy
+# shape_map
+run: airports -> {
+    group_by: state
+    aggregate: complaints.numcomplaints
+}
+>>>markdown
+Map of states that had FOIA complaints
+>>>malloy
+# shape_map
+run: airports -> {
+    group_by: state
+    aggregate: complaints.numcomplaints
+    where: complaints.clean_cat = "Freedom of Information Act (FOIA)"
+}
+>>>markdown
+Map of states that have a tendency to mismanage materials
+>>>malloy
+# shape_map
+run: airports -> {
+    group_by: state
+    aggregate: complaints.numcomplaints
+    where: complaints.clean_cat = "Hazardous Materials Safety"
+}
+>>>markdown
+States with airports that I hate
+>>>malloy
+# shape_map
+run: airports -> {
+    group_by: state
+    aggregate: complaints.numcomplaints
+    where: state = "CA"|"WA"|"TX"
+}
+>>>markdown
+Month with the most damaged/missing checked baggage in California
+>>>malloy
+run: airports -> {
+    group_by: complaints.clean_subcat
+    aggregate: complaints.numcomplaints
+    where: state = "CA" and complaints.clean_subcat = "*Damaged/Missing Items--Checked Baggage"
+    nest: bymonth is {
+        group_by: complaints.month1
+        aggregate: complaints.numcomplaints
+        limit: 1
+    }
+}
+>>>markdown
+Airports in Texas with the most complaints
+>>>malloy
+run: airports -> {
+    group_by: name
+    aggregate: complaints.numcomplaints
+    where: state = "TX"
+}
+>>>markdown
+Which airport each year has the most customer service complaints?
+>>>malloy
+run: airports -> {
+    group_by: complaints.year1
+    aggregate: complaints.numcomplaints
+    where: complaints.clean_cat = "Customer Service"
+    order_by: year1 asc
+    nest: by_airport is {
+        group_by: name
+        aggregate: complaints.numcomplaints
+        limit: 1
+    }
+}
+>>>markdown
+Show the previous one on a map
+>>>malloy
+# shape_map
+run: airports -> {
+    group_by: state
+    aggregate: complaints.numcomplaints
+    where: complaints.clean_cat = "Customer Service"
+    }
+>>>markdown
+Number of complaints by quarter
+>>>malloy
+# bar_chart
+run: airports -> {
+    group_by: complaints.quarter1
+    aggregate: complaints.numcomplaints
+    order_by: quarter1 asc
+    where: complaints.quarter1 is not null
+    }
+>>>markdown
+And what is the biggest complaint category by quarter in FL in 2020?
+>>>malloy
+run: airports -> {
+    group_by: complaints.quarter1
+    aggregate: complaints.numcomplaints
+    where: complaints.quarter1 is not null and state = "FL"
+    order_by: quarter1 asc
+    nest: byyear is {
+        group_by: complaints.clean_cat
+        aggregate: complaints.numcomplaints
+        where: complaints.year1 = 2020
+        limit: 3
+    }
+    }
+>>>markdown
+Now lets see WA and OR as well
+>>>malloy
+run: airports -> {
+    group_by: complaints.quarter1
+    aggregate: complaints.numcomplaints
+    where: complaints.quarter1 is not null and state = "WA"|"OR"
+    order_by: quarter1 asc
+    nest: byyear is {
+        group_by: complaints.clean_cat
+        aggregate: complaints.numcomplaints
+        where: complaints.year1 = 2020
+        limit: 3
+    }
+    }
+>>>markdown
