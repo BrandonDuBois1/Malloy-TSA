@@ -19,6 +19,52 @@ join_one: complaints on iata = complaints.airport
 measure: numairports2 is count(name)
 }
 >>>markdown
+Yearly trend of complaints in WA 
+>>>malloy
+# line_chart
+run: airports -> {
+    group_by: complaints.year1
+    aggregate: complaints.numcomplaints
+    where: state = "WA" and complaints.year1 is not null
+    order_by: year1 asc
+    }
+>>>markdown
+And what is the breakdown of complaints by year?
+>>>malloy
+# line_chart
+run: complaints -> {
+    group_by: date1.year
+    aggregate: numcomplaints
+}
+>>>markdown
+Bar chart of complaint categories top 15
+>>>malloy
+# bar_chart
+run: complaints -> {
+    group_by: clean_cat
+    aggregate: numcomplaints
+    order_by: numcomplaints desc
+    limit: 15}
+>>>markdown
+Worst Airports for people with disabilities?
+>>>malloy
+run: airports -> {
+    group_by: name
+    aggregate: complaints.numcomplaints
+    where: complaints.clean_cat = "Persons w/ Disabilities (PWD)" and complaints.airport is not null
+    limit: 10
+}
+>>>markdown
+Number of complaints by quarter
+>>>malloy
+# bar_chart
+run: airports -> {
+    group_by: complaints.quarter1
+    aggregate: complaints.numcomplaints
+    order_by: quarter1 asc
+    where: complaints.quarter1 is not null
+    }
+>>>markdown
 How many airports are we looking at?
 >>>malloy
 run: complaints -> {
@@ -79,14 +125,6 @@ run: complaints -> {
     }
 }
 >>>markdown
-And what is the breakdown of complaints by year?
->>>malloy
-# line_chart
-run: complaints -> {
-    group_by: date1.year
-    aggregate: numcomplaints
-}
->>>markdown
 Number of compaints by month?
 >>>malloy
 # line_chart
@@ -142,15 +180,6 @@ run: complaints -> {
         }
     }
 >>>markdown
-Bar chart of complaint categories top 15
->>>malloy
-# bar_chart
-run: complaints -> {
-    group_by: clean_cat
-    aggregate: numcomplaints
-    order_by: numcomplaints desc
-    limit: 15}
->>>markdown
 Complaint categories bottom 10
 >>>malloy
 
@@ -199,15 +228,6 @@ run: complaints -> {
     limit: 100000
 }
     
->>>markdown
-Worst Airports for people with disabilities?
->>>malloy
-run: airports -> {
-    group_by: name
-    aggregate: complaints.numcomplaints
-    where: complaints.clean_cat = "Persons w/ Disabilities (PWD)" and complaints.airport is not null
-    limit: 10
-}
 >>>markdown
 Which states have the most complaints?
 >>>malloy
@@ -302,16 +322,6 @@ run: airports -> {
     order_by: numcomplaints asc
     }
 >>>markdown
-Yearly trend of complaints in WA 
->>>malloy
-# line_chart
-run: airports -> {
-    group_by: complaints.year1
-    aggregate: complaints.numcomplaints
-    where: state = "WA" and complaints.year1 is not null
-    order_by: year1 asc
-    }
->>>markdown
 Map of complaints
 >>>malloy
 # shape_map
@@ -389,16 +399,6 @@ run: airports -> {
     group_by: state
     aggregate: complaints.numcomplaints
     where: complaints.clean_cat = "Customer Service"
-    }
->>>markdown
-Number of complaints by quarter
->>>malloy
-# bar_chart
-run: airports -> {
-    group_by: complaints.quarter1
-    aggregate: complaints.numcomplaints
-    order_by: quarter1 asc
-    where: complaints.quarter1 is not null
     }
 >>>markdown
 And what is the biggest complaint category by quarter in FL in 2020?
