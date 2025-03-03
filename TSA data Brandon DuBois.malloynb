@@ -302,7 +302,7 @@ run: airports -> {
     order_by: numcomplaints asc
     }
 >>>markdown
-Yearly trend of complaints in WA
+Yearly trend of complaints in WA 
 >>>malloy
 # line_chart
 run: airports -> {
